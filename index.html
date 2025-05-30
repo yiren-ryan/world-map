@@ -1,16 +1,85 @@
+
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
+<html>
+  <head>
+    <title>World Map with Comments</title>
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>World Map Messages</title>
-    <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="https://cdn.staticfile.org/leaflet/1.9.3/leaflet.css" />
-    <script src="https://cdn.staticfile.org/leaflet/1.9.3/leaflet.js"></script>
-</head>
-<body>
-    <h1>World Map</h1>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-sA+e2tu+E4S1RHY8U+5zEYIpryI4zH5vNQ1jklM5Jfk="
+      crossorigin=""
+    />
+    <style>
+      #map { height: 100vh; }
+      .leaflet-popup-content-wrapper { font-size: 14px; }
+    </style>
+  </head>
+  <body>
     <div id="map"></div>
-    <script src="script.js"></script>
-</body>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBeTttfhJ1u8cJVvx2uOzPk_7cCV8z0q0o",
+        authDomain: "world-map-54797.firebaseapp.com",
+        projectId: "world-map-54797",
+        storageBucket: "world-map-54797.appspot.com",
+        messagingSenderId: "640530095859",
+        appId: "1:640530095859:web:e376f9a51110f83f83a186",
+        measurementId: "G-LMBC3T3MMP"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      const map = L.map('map').setView([0, 0], 2);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      async function addMarker(latlng, message, docId) {
+        const popupContent = document.createElement('div');
+        const messageElem = document.createElement('div');
+        messageElem.textContent = message;
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = "Delete";
+        deleteBtn.style.marginTop = "5px";
+        deleteBtn.onclick = async () => {
+          await deleteDoc(doc(db, "markers", docId));
+        };
+
+        popupContent.appendChild(messageElem);
+        popupContent.appendChild(deleteBtn);
+
+        L.marker(latlng).addTo(map).bindPopup(popupContent);
+      }
+
+      map.on('click', async function (e) {
+        const message = prompt("Enter your message:");
+        if (message) {
+          const docRef = await addDoc(collection(db, "markers"), {
+            lat: e.latlng.lat,
+            lng: e.latlng.lng,
+            message: message,
+            timestamp: Date.now()
+          });
+        }
+      });
+
+      onSnapshot(collection(db, "markers"), (snapshot) => {
+        map.eachLayer((layer) => {
+          if (layer instanceof L.Marker) map.removeLayer(layer);
+        });
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          addMarker([data.lat, data.lng], data.message, docSnap.id);
+        });
+      });
+    </script>
+  </body>
 </html>
